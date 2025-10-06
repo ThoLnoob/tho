@@ -1,262 +1,257 @@
---// Services
+--// Banana Style Hub (Tho Edition Full)
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
---// UI Library kiểu Banana Hub
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ThoHubUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- ScreenGui
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 
--- Main Frame
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MainFrame.Size = UDim2.new(0, 550, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -275, 0.5, -150)
-MainFrame.Visible = true
-Instance.new("UICorner", MainFrame)
+-- Nút tròn mở/đóng menu
+local ToggleButton = Instance.new("ImageButton")
+ToggleButton.Size = UDim2.new(0, 60, 0, 60)
+ToggleButton.Position = UDim2.new(0, 100, 0, 200)
+ToggleButton.BackgroundTransparency = 1
+ToggleButton.Image = "rbxassetid://89300403770535" -- hình bạn đưa
+ToggleButton.Draggable = true
+ToggleButton.Parent = ScreenGui
 
--- Tabs Panel
-local TabFrame = Instance.new("Frame", MainFrame)
-TabFrame.Size = UDim2.new(0, 150, 1, 0)
-TabFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Instance.new("UICorner", TabFrame)
+-- Khung menu chính
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 400, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
--- Content Panel
-local ContentFrame = Instance.new("Frame", MainFrame)
-ContentFrame.Position = UDim2.new(0, 160, 0, 0)
-ContentFrame.Size = UDim2.new(1, -160, 1, 0)
-ContentFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Instance.new("UICorner", ContentFrame)
+-- Tab bar
+local TabBar = Instance.new("Frame", MainFrame)
+TabBar.Size = UDim2.new(1, 0, 0, 40)
+TabBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 
--- Helper create tab button
-local function CreateTab(name)
-    local Btn = Instance.new("TextButton", TabFrame)
-    Btn.Text = name
-    Btn.Size = UDim2.new(1, -10, 0, 40)
-    Btn.Position = UDim2.new(0, 5, 0, (#TabFrame:GetChildren()-1)*45)
-    Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    Btn.TextColor3 = Color3.fromRGB(255,255,255)
-    Btn.Font = Enum.Font.SourceSansBold
-    Btn.TextSize = 18
-    Instance.new("UICorner", Btn)
-    return Btn
+local function createTab(name, posX)
+    local btn = Instance.new("TextButton", TabBar)
+    btn.Size = UDim2.new(0, 100, 1, 0)
+    btn.Position = UDim2.new(0, posX, 0, 0)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.BackgroundTransparency = 1
+    return btn
 end
 
--- Content Pages
+local MainTab = createTab("Main", 0)
+local PlayerTab = createTab("Player", 100)
+local TeleportTab = createTab("Teleport", 200)
+
+-- Các trang
 local Pages = {}
-
-local function CreatePage(name)
-    local Page = Instance.new("Frame", ContentFrame)
-    Page.Size = UDim2.new(1,0,1,0)
-    Page.BackgroundTransparency = 1
-    Page.Visible = false
-    Pages[name] = Page
-    return Page
+local function createPage()
+    local frame = Instance.new("Frame", MainFrame)
+    frame.Size = UDim2.new(1, 0, 1, -40)
+    frame.Position = UDim2.new(0,0,0,40)
+    frame.BackgroundTransparency = 1
+    frame.Visible = false
+    return frame
 end
 
-local function ShowPage(name)
+Pages.Main = createPage()
+Pages.Player = createPage()
+Pages.Teleport = createPage()
+
+-- Switch tab
+local function showPage(tab)
     for _,p in pairs(Pages) do p.Visible = false end
-    if Pages[name] then Pages[name].Visible = true end
+    Pages[tab].Visible = true
 end
+MainTab.MouseButton1Click:Connect(function() showPage("Main") end)
+PlayerTab.MouseButton1Click:Connect(function() showPage("Player") end)
+TeleportTab.MouseButton1Click:Connect(function() showPage("Teleport") end)
+showPage("Main")
 
---// Tabs
-local mainBtn = CreateTab("Main")
-local playerBtn = CreateTab("Player")
-local espBtn = CreateTab("ESP")
-local otherBtn = CreateTab("Other")
+-- Toggle menu
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
 
--- Pages
-local mainPage = CreatePage("Main")
-local playerPage = CreatePage("Player")
-local espPage = CreatePage("ESP")
-local otherPage = CreatePage("Other")
+-- ========== SLIDER FUNCTION ==========
+local function createSlider(parent, title, min, max, default, callback)
+    local frame = Instance.new("Frame", parent)
+    frame.Size = UDim2.new(1, -20, 0, 40)
+    frame.Position = UDim2.new(0, 10, 0, #parent:GetChildren()*45)
+    frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0,5)
 
--- Show default
-ShowPage("Main")
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(0.4,0,1,0)
+    label.BackgroundTransparency = 1
+    label.Text = title
+    label.TextColor3 = Color3.fromRGB(255,255,255)
 
-mainBtn.MouseButton1Click:Connect(function() ShowPage("Main") end)
-playerBtn.MouseButton1Click:Connect(function() ShowPage("Player") end)
-espBtn.MouseButton1Click:Connect(function() ShowPage("ESP") end)
-otherBtn.MouseButton1Click:Connect(function() ShowPage("Other") end)
+    local slider = Instance.new("TextBox", frame)
+    slider.Size = UDim2.new(0.6,0,1,0)
+    slider.Position = UDim2.new(0.4,0,0,0)
+    slider.Text = tostring(default)
+    slider.ClearTextOnFocus = false
+    slider.TextColor3 = Color3.fromRGB(0,255,0)
 
---// Variables
-local WalkSpeedValue, JumpPowerValue, FlySpeedValue = 16, 50, 50
-local flying = false
-local espEnabled = false
-local espConnections = {}
-
---// Helper Slider
-local function CreateSlider(parent, text, min, max, default, callback)
-    local Frame = Instance.new("Frame", parent)
-    Frame.Size = UDim2.new(1,-20,0,60)
-    Frame.Position = UDim2.new(0,10,0,#parent:GetChildren()*65)
-    Frame.BackgroundTransparency = 1
-
-    local Label = Instance.new("TextLabel", Frame)
-    Label.Text = text .. ": " .. default
-    Label.TextColor3 = Color3.fromRGB(255,255,255)
-    Label.Font = Enum.Font.SourceSansBold
-    Label.Size = UDim2.new(1,0,0,20)
-    Label.BackgroundTransparency = 1
-
-    local Slider = Instance.new("TextButton", Frame)
-    Slider.Size = UDim2.new(1,0,0,20)
-    Slider.Position = UDim2.new(0,0,0,30)
-    Slider.BackgroundColor3 = Color3.fromRGB(80,80,80)
-    Slider.Text = ""
-    Instance.new("UICorner", Slider)
-
-    local Fill = Instance.new("Frame", Slider)
-    Fill.Size = UDim2.new((default-min)/(max-min),0,1,0)
-    Fill.BackgroundColor3 = Color3.fromRGB(0,170,255)
-    Fill.BorderSizePixel = 0
-
-    local dragging = false
-    Slider.MouseButton1Down:Connect(function() dragging = true end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging=false end
-    end)
-    RunService.RenderStepped:Connect(function()
-        if dragging then
-            local mouseX = UserInputService:GetMouseLocation().X
-            local percent = math.clamp((mouseX-Slider.AbsolutePosition.X)/Slider.AbsoluteSize.X,0,1)
-            Fill.Size = UDim2.new(percent,0,1,0)
-            local val = math.floor(min + (max-min)*percent)
-            Label.Text = text .. ": " .. val
+    slider.FocusLost:Connect(function()
+        local val = tonumber(slider.Text)
+        if val then
+            if val < min then val = min end
+            if val > max then val = max end
+            slider.Text = tostring(val)
             callback(val)
         end
     end)
 end
 
---// Sliders in Player Page
-CreateSlider(playerPage,"WalkSpeed",16,200,16,function(val)
-    WalkSpeedValue = val
-    if LocalPlayer.Character then
+-- ========== MAIN TAB ==========
+-- WalkSpeed
+createSlider(Pages.Main,"WalkSpeed",16,200,16,function(val)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = val
     end
 end)
 
-CreateSlider(playerPage,"JumpPower",50,200,50,function(val)
-    JumpPowerValue = val
-    if LocalPlayer.Character then
+-- JumpPower
+createSlider(Pages.Main,"JumpPower",50,200,50,function(val)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = val
     end
 end)
 
-CreateSlider(playerPage,"FlySpeed",10,200,50,function(val)
-    FlySpeedValue = val
+-- Fly Speed
+local flying = false
+local flySpeed = 50
+createSlider(Pages.Main,"Fly Speed",10,50,50,function(val)
+    flySpeed = val
 end)
 
--- Fly Toggle
-local FlyBtn = Instance.new("TextButton", playerPage)
-FlyBtn.Text = "Toggle Fly (OFF)"
-FlyBtn.Size = UDim2.new(0,200,0,40)
-FlyBtn.Position = UDim2.new(0,10,0,220)
-FlyBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-FlyBtn.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", FlyBtn)
-
-FlyBtn.MouseButton1Click:Connect(function()
+-- Fly Button
+local flyBtn = Instance.new("TextButton", Pages.Main)
+flyBtn.Size = UDim2.new(1,-20,0,40)
+flyBtn.Position = UDim2.new(0,10,0,140)
+flyBtn.Text = "Toggle Fly"
+flyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+flyBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+flyBtn.MouseButton1Click:Connect(function()
     flying = not flying
-    FlyBtn.Text = "Toggle Fly ("..(flying and "ON" or "OFF")..")"
+    if flying then
+        local char = LocalPlayer.Character
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        local root = char:FindFirstChild("HumanoidRootPart")
+        spawn(function()
+            while flying and task.wait() do
+                if hum and root then
+                    root.Velocity = hum.MoveDirection * flySpeed
+                end
+            end
+        end)
+    end
 end)
 
--- Fly logic
-RunService.RenderStepped:Connect(function()
-    if flying and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LocalPlayer.Character.HumanoidRootPart
-        local moveDir = Vector3.zero
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0,1,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0,1,0) end
-        if moveDir.Magnitude > 0 then
-            hrp.Velocity = moveDir.Unit * FlySpeedValue
-        else
-            hrp.Velocity = Vector3.new(0,0,0)
+-- Hop server
+local hopBtn = Instance.new("TextButton", Pages.Main)
+hopBtn.Size = UDim2.new(1,-20,0,40)
+hopBtn.Position = UDim2.new(0,10,0,190)
+hopBtn.Text = "Hop Low Server"
+hopBtn.TextColor3 = Color3.fromRGB(255,255,255)
+hopBtn.BackgroundColor3 = Color3.fromRGB(80,30,30)
+hopBtn.MouseButton1Click:Connect(function()
+    local req = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
+    local data = HttpService:JSONDecode(req)
+    for _,v in pairs(data.data) do
+        if v.playing < v.maxPlayers then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, LocalPlayer)
+            break
         end
     end
 end)
 
---// ESP (BillboardGui + BoxHandleAdornment)
-local function AddESP(player)
-    if player == LocalPlayer then return end
+-- ESP Toggle
+local espEnabled = false
+local espBtn = Instance.new("TextButton", Pages.Main)
+espBtn.Size = UDim2.new(1,-20,0,40)
+espBtn.Position = UDim2.new(0,10,0,240)
+espBtn.Text = "Toggle ESP Players"
+espBtn.TextColor3 = Color3.fromRGB(255,255,255)
+espBtn.BackgroundColor3 = Color3.fromRGB(40,40,80)
 
-    local function createESP(char)
+local function createESP(player)
+    if player == LocalPlayer then return end
+    player.CharacterAdded:Connect(function(char)
         task.wait(1)
+        if not espEnabled then return end
         if not char:FindFirstChild("HumanoidRootPart") then return end
 
-        -- Name tag
+        -- Tên
         local billboard = Instance.new("BillboardGui", char.HumanoidRootPart)
         billboard.Size = UDim2.new(0,200,0,50)
         billboard.AlwaysOnTop = true
-        billboard.StudsOffset = Vector3.new(0,3,0)
         local nameLabel = Instance.new("TextLabel", billboard)
         nameLabel.Size = UDim2.new(1,0,1,0)
         nameLabel.BackgroundTransparency = 1
         nameLabel.Text = player.Name
-        nameLabel.TextColor3 = Color3.new(1,1,1)
-        nameLabel.TextStrokeTransparency = 0.5
-        nameLabel.Font = Enum.Font.SourceSansBold
-        nameLabel.TextScaled = true
+        nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
 
-        -- Box
-        local box = Instance.new("BoxHandleAdornment")
+        -- Ô vuông
+        local box = Instance.new("BoxHandleAdornment", char.HumanoidRootPart)
         box.Size = Vector3.new(4,7,2)
-        box.Color3 = Color3.new(1,1,1)
+        box.Color3 = Color3.fromRGB(255,255,255)
         box.Transparency = 0.5
         box.AlwaysOnTop = true
-        box.ZIndex = 10
+        box.ZIndex = 5
         box.Adornee = char
-        box.Parent = char
-
-        espConnections[player] = {billboard, box}
-    end
-
-    if player.Character then
-        createESP(player.Character)
-    end
-    player.CharacterAdded:Connect(createESP)
+    end)
 end
 
-local function RemoveESP(player)
-    if espConnections[player] then
-        for _,v in pairs(espConnections[player]) do
-            if v.Destroy then v:Destroy() end
-        end
-        espConnections[player] = nil
-    end
-end
-
-Players.PlayerAdded:Connect(AddESP)
-Players.PlayerRemoving:Connect(RemoveESP)
-for _,p in pairs(Players:GetPlayers()) do AddESP(p) end
-
--- ESP Toggle Button
-local ESPBtn = Instance.new("TextButton", espPage)
-ESPBtn.Text = "ESP Player: OFF"
-ESPBtn.Size = UDim2.new(0,200,0,40)
-ESPBtn.Position = UDim2.new(0,10,0,20)
-ESPBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-ESPBtn.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", ESPBtn)
-
-ESPBtn.MouseButton1Click:Connect(function()
+espBtn.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
-    ESPBtn.Text = "ESP Player: " .. (espEnabled and "ON" or "OFF")
-
-    for _,data in pairs(espConnections) do
-        for _,v in pairs(data) do
+    if espEnabled then
+        for _,p in pairs(Players:GetPlayers()) do
+            createESP(p)
+        end
+        Players.PlayerAdded:Connect(createESP)
+    else
+        for _,v in pairs(workspace:GetDescendants()) do
             if v:IsA("BillboardGui") or v:IsA("BoxHandleAdornment") then
-                v.Enabled = espEnabled
+                v:Destroy()
             end
         end
+    end
+end)
+
+-- ========== PLAYER TAB ==========
+local reBtn = Instance.new("TextButton", Pages.Player)
+reBtn.Size = UDim2.new(1,-20,0,40)
+reBtn.Position = UDim2.new(0,10,0,10)
+reBtn.Text = "Rejoin"
+reBtn.TextColor3 = Color3.fromRGB(255,255,255)
+reBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+reBtn.MouseButton1Click:Connect(function()
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end)
+
+local resetBtn = Instance.new("TextButton", Pages.Player)
+resetBtn.Size = UDim2.new(1,-20,0,40)
+resetBtn.Position = UDim2.new(0,10,0,60)
+resetBtn.Text = "Reset Character"
+resetBtn.TextColor3 = Color3.fromRGB(255,255,255)
+resetBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+resetBtn.MouseButton1Click:Connect(function()
+    LocalPlayer.Character:BreakJoints()
+end)
+
+-- ========== TELEPORT TAB ==========
+local tpBtn = Instance.new("TextButton", Pages.Teleport)
+tpBtn.Size = UDim2.new(1,-20,0,40)
+tpBtn.Position = UDim2.new(0,10,0,10)
+tpBtn.Text = "Teleport Spawn"
+tpBtn.TextColor3 = Color3.fromRGB(255,255,255)
+tpBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+tpBtn.MouseButton1Click:Connect(function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and workspace:FindFirstChild("SpawnLocation") then
+        LocalPlayer.Character:MoveTo(workspace.SpawnLocation.Position)
     end
 end)
