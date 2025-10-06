@@ -1,483 +1,262 @@
--- Tho Lnoob Galaxy Hub - Universal Full (LocalScript)
--- Paste into StarterPlayerScripts for testing in your own place
-
+--// Services
 local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
--- helper
-local function new(class, props)
-    local obj = Instance.new(class)
-    if props then
-        for k,v in pairs(props) do
-            if k ~= "Parent" then obj[k] = v end
-        end
-        if props.Parent then obj.Parent = props.Parent end
-    end
-    return obj
+--// UI Library kiểu Banana Hub
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ThoHubUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Main Frame
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Size = UDim2.new(0, 550, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -150)
+MainFrame.Visible = true
+Instance.new("UICorner", MainFrame)
+
+-- Tabs Panel
+local TabFrame = Instance.new("Frame", MainFrame)
+TabFrame.Size = UDim2.new(0, 150, 1, 0)
+TabFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Instance.new("UICorner", TabFrame)
+
+-- Content Panel
+local ContentFrame = Instance.new("Frame", MainFrame)
+ContentFrame.Position = UDim2.new(0, 160, 0, 0)
+ContentFrame.Size = UDim2.new(1, -160, 1, 0)
+ContentFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Instance.new("UICorner", ContentFrame)
+
+-- Helper create tab button
+local function CreateTab(name)
+    local Btn = Instance.new("TextButton", TabFrame)
+    Btn.Text = name
+    Btn.Size = UDim2.new(1, -10, 0, 40)
+    Btn.Position = UDim2.new(0, 5, 0, (#TabFrame:GetChildren()-1)*45)
+    Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Btn.TextColor3 = Color3.fromRGB(255,255,255)
+    Btn.Font = Enum.Font.SourceSansBold
+    Btn.TextSize = 18
+    Instance.new("UICorner", Btn)
+    return Btn
 end
 
--- theme
-local BG1 = Color3.fromRGB(18,10,30)
-local BG2 = Color3.fromRGB(28,12,55)
-local ACCENT = Color3.fromRGB(125,50,255)
-local ACCENT2 = Color3.fromRGB(40,200,255)
-local TEXT = Color3.fromRGB(235,235,240)
-local OFF_BG = Color3.fromRGB(45,45,55)
-local ON_BG = Color3.fromRGB(30,40,70)
+-- Content Pages
+local Pages = {}
 
--- root gui
-local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-local ScreenGui = new("ScreenGui", {Parent = playerGui, Name = "ThoLnoobGalaxyHub", ResetOnSpawn = false})
-
--- floating toggle button
-local ToggleButton = new("ImageButton", {
-    Parent = ScreenGui, Name = "GalaxyToggle",
-    Size = UDim2.new(0,64,0,64),
-    Position = UDim2.new(0, 40, 0.5, -32),
-    BackgroundTransparency = 0, BackgroundColor3 = BG2,
-    Image = "rbxassetid://89300403770535", AutoButtonColor = false, ZIndex = 5
-})
-new("UICorner", {Parent = ToggleButton, CornerRadius = UDim.new(0,32)})
-
--- draggable toggle
-do
-    local dragging = false
-    local dragStart, startPos, dragInput
-    ToggleButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = ToggleButton.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    ToggleButton.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+local function CreatePage(name)
+    local Page = Instance.new("Frame", ContentFrame)
+    Page.Size = UDim2.new(1,0,1,0)
+    Page.BackgroundTransparency = 1
+    Page.Visible = false
+    Pages[name] = Page
+    return Page
 end
 
--- main window
-local MainFrame = new("Frame", {
-    Parent = ScreenGui, Name = "MainFrame",
-    Size = UDim2.new(0,580,0,420), Position = UDim2.new(0.5, -290, 0.5, -210),
-    BackgroundColor3 = BG1, BorderSizePixel = 0, Visible = false, ZIndex = 4
-})
-new("UICorner", {Parent = MainFrame, CornerRadius = UDim.new(0,14)})
-local TopBar = new("Frame", {Parent = MainFrame, Size = UDim2.new(1,0,0,58), BackgroundColor3 = BG2})
-new("UICorner", {Parent = TopBar, CornerRadius = UDim.new(0,12)})
-local TitleLabel = new("TextLabel", {
-    Parent = TopBar, Text = "Tho Lnoob", BackgroundTransparency = 1, TextColor3 = TEXT,
-    Font = Enum.Font.GothamBold, TextSize = 20, Position = UDim2.new(0.02,0,0,0), Size = UDim2.new(0.5,0,1,0), TextXAlignment = Enum.TextXAlignment.Left
-})
-local Subtitle = new("TextLabel", {
-    Parent = TopBar, Text = "Galaxy Hub", BackgroundTransparency = 1, TextColor3 = ACCENT2,
-    Font = Enum.Font.Gotham, TextSize = 12, Position = UDim2.new(0.02,0,0.58,0), Size = UDim2.new(0.5,0,0.42,0), TextXAlignment = Enum.TextXAlignment.Left
-})
-
--- window controls
-local Controls = new("Frame", {Parent = TopBar, Size = UDim2.new(0,120,1,0), Position = UDim2.new(1,-140,0,0), BackgroundTransparency = 1})
-local btnMin = new("TextButton", {Parent = Controls, Size = UDim2.new(0,36,0,30), Position = UDim2.new(0,0,0.1,0), Text = "—", BackgroundColor3 = BG1, TextColor3 = TEXT, Font = Enum.Font.GothamBold, TextSize = 18, BorderSizePixel = 0})
-local btnMax = new("TextButton", {Parent = Controls, Size = UDim2.new(0,36,0,30), Position = UDim2.new(0,44,0.1,0), Text = "▢", BackgroundColor3 = BG1, TextColor3 = TEXT, Font = Enum.Font.GothamBold, TextSize = 14, BorderSizePixel = 0})
-local btnClose = new("TextButton", {Parent = Controls, Size = UDim2.new(0,36,0,30), Position = UDim2.new(0,88,0.1,0), Text = "✕", BackgroundColor3 = Color3.fromRGB(200,50,70), TextColor3 = TEXT, Font = Enum.Font.GothamBold, TextSize = 16, BorderSizePixel = 0})
-for _,b in pairs({btnMin, btnMax, btnClose}) do new("UICorner",{Parent = b, CornerRadius = UDim.new(0,6)}) end
-btnClose.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
-btnMin.MouseButton1Click:Connect(function()
-    if MainFrame.Size.X.Offset > 100 then
-        MainFrame.Size = UDim2.new(0,280,0,64); MainFrame.Position = UDim2.new(0.02,0,0.02,0)
-    else
-        MainFrame.Size = UDim2.new(0,580,0,420); MainFrame.Position = UDim2.new(0.5,-290,0.5,-210)
-    end
-end)
-btnMax.MouseButton1Click:Connect(function()
-    MainFrame.Size = UDim2.new(0, math.clamp(workspace.CurrentCamera.ViewportSize.X - 40, 300, 1400), 0, math.clamp(workspace.CurrentCamera.ViewportSize.Y - 80, 120, 900))
-    MainFrame.Position = UDim2.new(0.5, -(MainFrame.Size.X.Offset/2), 0.5, -(MainFrame.Size.Y.Offset/2))
-end)
-
--- draggable mainframe via topbar
-do
-    local dragging, dragStart, startPos, dragInput
-    TopBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
-        end
-    end)
-    TopBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+local function ShowPage(name)
+    for _,p in pairs(Pages) do p.Visible = false end
+    if Pages[name] then Pages[name].Visible = true end
 end
 
--- body layout
-local Body = new("Frame", {Parent = MainFrame, Size = UDim2.new(1,0,1,-58), Position = UDim2.new(0,0,0,58), BackgroundTransparency = 1})
-local LeftPane = new("Frame", {Parent = Body, Size = UDim2.new(0,180,1,0), BackgroundColor3 = Color3.fromRGB(14,8,24)})
-new("UICorner", {Parent = LeftPane, CornerRadius = UDim.new(0,10)})
-local ContentPane = new("Frame", {Parent = Body, Size = UDim2.new(1,-180,1,0), Position = UDim2.new(0,180,0,0), BackgroundTransparency = 1})
-local ContentLayout = new("UIListLayout", {Parent = ContentPane}); ContentLayout.Padding = UDim.new(0,8); ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+--// Tabs
+local mainBtn = CreateTab("Main")
+local playerBtn = CreateTab("Player")
+local espBtn = CreateTab("ESP")
+local otherBtn = CreateTab("Other")
 
--- tabs
-local tabs = {"Main","Player","Teleport","Visual"}
-local tabButtons = {}
-local function selectTab(name)
-    for k,btn in pairs(tabButtons) do
-        if k == name then btn.BackgroundColor3 = ACCENT; btn.TextColor3 = Color3.new(0,0,0) else btn.BackgroundColor3 = Color3.fromRGB(18,10,30); btn.TextColor3 = TEXT end
-    end
-    for _,child in pairs(ContentPane:GetChildren()) do
-        if child:IsA("Frame") and child:GetAttribute("Tag") then child.Visible = (child:GetAttribute("Tag") == name) end
-    end
-end
+-- Pages
+local mainPage = CreatePage("Main")
+local playerPage = CreatePage("Player")
+local espPage = CreatePage("ESP")
+local otherPage = CreatePage("Other")
 
-for i,name in ipairs(tabs) do
-    local b = new("TextButton", {Parent = LeftPane, Size = UDim2.new(1,-20,0,50), Position = UDim2.new(0,10,0,10 + (i-1)*60), Text = name, BackgroundColor3 = Color3.fromRGB(18,10,30), TextColor3 = TEXT, Font = Enum.Font.GothamSemibold, TextSize = 16, BorderSizePixel = 0})
-    new("UICorner",{Parent = b, CornerRadius = UDim.new(0,8)})
-    b.MouseEnter:Connect(function() b.BackgroundTransparency = 0.05 end)
-    b.MouseLeave:Connect(function() b.BackgroundTransparency = 0 end)
-    tabButtons[name] = b
-    b.MouseButton1Click:Connect(function() selectTab(name) end)
-end
-selectTab("Main")
+-- Show default
+ShowPage("Main")
 
--- helpers for rows, switches, plusminus
-local function createFunctionRow(tag, title, subtitle)
-    local row = new("Frame", {Parent = ContentPane, Size = UDim2.new(1,-20,0,56), BackgroundColor3 = Color3.fromRGB(18,12,32)})
-    new("UICorner", {Parent = row, CornerRadius = UDim.new(0,8)})
-    row:SetAttribute("Tag", tag)
-    local left = new("Frame", {Parent = row, Size = UDim2.new(0.68,0,1,0), BackgroundTransparency = 1})
-    new("TextLabel", {Parent = left, Text = title, BackgroundTransparency = 1, TextColor3 = TEXT, Font = Enum.Font.GothamSemibold, TextSize = 14, Size = UDim2.new(1,0,0.6,0), TextXAlignment = Enum.TextXAlignment.Left})
-    new("TextLabel", {Parent = left, Text = subtitle or "", BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(170,170,185), Font = Enum.Font.Gotham, TextSize = 12, Size = UDim2.new(1,0,0.4,0), Position = UDim2.new(0,0,0.6,0), TextXAlignment = Enum.TextXAlignment.Left})
-    local right = new("Frame", {Parent = row, Size = UDim2.new(0.32,0,1,0), BackgroundTransparency = 1})
-    return row, left, right
-end
+mainBtn.MouseButton1Click:Connect(function() ShowPage("Main") end)
+playerBtn.MouseButton1Click:Connect(function() ShowPage("Player") end)
+espBtn.MouseButton1Click:Connect(function() ShowPage("ESP") end)
+otherBtn.MouseButton1Click:Connect(function() ShowPage("Other") end)
 
-local function createSwitch(parent, initial)
-    local sw = new("TextButton", {Parent = parent, Size = UDim2.new(0,68,0,30), BackgroundColor3 = OFF_BG, AutoButtonColor = false, Text = ""})
-    new("UICorner", {Parent = sw, CornerRadius = UDim.new(0,16)})
-    local knob = new("Frame", {Parent = sw, Size = UDim2.new(0.48,0,1,0), Position = UDim2.new(0,0,0,0), BackgroundColor3 = Color3.fromRGB(220,220,220)})
-    new("UICorner", {Parent = knob, CornerRadius = UDim.new(0,14)})
-    local state = initial or false
-    local function refresh()
-        if state then
-            sw.BackgroundColor3 = ON_BG
-            knob:TweenPosition(UDim2.new(0.52,0,0,0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
-            knob.BackgroundColor3 = ACCENT2
-        else
-            sw.BackgroundColor3 = OFF_BG
-            knob:TweenPosition(UDim2.new(0,0,0,0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
-            knob.BackgroundColor3 = Color3.fromRGB(220,220,220)
-        end
-    end
-    sw.MouseButton1Click:Connect(function() state = not state; refresh() end)
-    refresh()
-    return {
-        Button = sw,
-        Set = function(v) state = v; refresh() end,
-        Get = function() return state end,
-        OnChanged = function(fn) sw.MouseButton1Click:Connect(function() fn(state) end) end
-    }
-end
-
-local function createPlusMinus(parent, default, minV, maxV)
-    local cont = new("Frame", {Parent = parent, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1})
-    local minus = new("TextButton", {Parent = cont, Text = "-", Size = UDim2.new(0,40,0,34), Position = UDim2.new(0,6,0,11), BackgroundColor3 = Color3.fromRGB(40,40,55), TextColor3 = TEXT, Font = Enum.Font.GothamBold, TextSize = 20, BorderSizePixel = 0})
-    new("UICorner", {Parent = minus, CornerRadius = UDim.new(0,8)})
-    local plus = new("TextButton", {Parent = cont, Text = "+", Size = UDim2.new(0,40,0,34), Position = UDim2.new(1,-46,0,11), BackgroundColor3 = Color3.fromRGB(40,40,55), TextColor3 = TEXT, Font = Enum.Font.GothamBold, TextSize = 20, BorderSizePixel = 0})
-    new("UICorner", {Parent = plus, CornerRadius = UDim.new(0,8)})
-    local label = new("TextLabel", {Parent = cont, Text = tostring(default), Size = UDim2.new(1,-108,0,34), Position = UDim2.new(0,56,0,11), BackgroundTransparency = 1, TextColor3 = ACCENT2, Font = Enum.Font.GothamBold, TextSize = 16})
-    local val = default or 0
-    minV = minV or -math.huge; maxV = maxV or math.huge
-    local function set(v) val = math.clamp(math.floor(v), minV, maxV); label.Text = tostring(val) end
-    minus.MouseButton1Click:Connect(function() set(val - 1) end)
-    plus.MouseButton1Click:Connect(function() set(val + 1) end)
-    set(default)
-    return {Frame = cont, Get = function() return val end, Set = function(v) set(v) end, Label = label, Plus = plus, Minus = minus}
-end
-
--- Implementation variables
-local pmWalk, pmJump, pmFly, flySwitch
-local espSwitch
-local espData = {} -- player -> {Billboard, Box, Conn}
-
--- MAIN: WalkSpeed
-do
-    local row, left, right = createFunctionRow("Main", "WalkSpeed", "Adjust walking speed")
-    pmWalk = createPlusMinus(right, 16, 16, 300)
-    pmWalk.Label.TextColor3 = ACCENT2
-    pmWalk.Set(16)
-    -- apply on click
-    pmWalk.Plus.MouseButton1Click:Connect(function()
-        local v = pmWalk.Get()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = v
-        end
-    end)
-    pmWalk.Minus.MouseButton1Click:Connect(function()
-        local v = pmWalk.Get()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = v
-        end
-    end)
-end
-
--- MAIN: JumpPower
-do
-    local row, left, right = createFunctionRow("Main", "JumpPower", "Adjust jump power")
-    pmJump = createPlusMinus(right, 50, 10, 400)
-    pmJump.Label.TextColor3 = ACCENT2
-    pmJump.Set(50)
-    pmJump.Plus.MouseButton1Click:Connect(function()
-        local v = pmJump.Get()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            local H = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            H.JumpPower = v; H.UseJumpPower = true
-        end
-    end)
-    pmJump.Minus.MouseButton1Click:Connect(function()
-        local v = pmJump.Get()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            local H = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            H.JumpPower = v; H.UseJumpPower = true
-        end
-    end)
-end
-
--- MAIN: Fly
-do
-    local row, left, right = createFunctionRow("Main", "Fly", "Toggle flight and adjust speed")
-    pmFly = createPlusMinus(right, 50, 10, 300)
-    pmFly.Label.TextColor3 = ACCENT2
-    pmFly.Set(50)
-    flySwitch = createSwitch(right, false)
-end
-
+--// Variables
+local WalkSpeedValue, JumpPowerValue, FlySpeedValue = 16, 50, 50
 local flying = false
-local flyBody = nil
-local function startFly()
-    if flying then return end
-    local character = LocalPlayer.Character
-    if not character then return end
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not hrp or not humanoid then return end
-    flying = true
-    flyBody = Instance.new("BodyVelocity")
-    flyBody.MaxForce = Vector3.new(1e5,1e5,1e5)
-    flyBody.Velocity = Vector3.new(0,0,0)
-    flyBody.P = 3000
-    flyBody.Parent = hrp
-    spawn(function()
-        while flying and flyBody and hrp and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") do
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            local dir = hum.MoveDirection
-            local spd = pmFly and pmFly.Get and pmFly.Get() or 50
-            local vy = 0
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vy = spd * 0.6 end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then vy = -spd * 0.6 end
-            flyBody.Velocity = Vector3.new(dir.X * spd, vy, dir.Z * spd)
-            task.wait()
+local espEnabled = false
+local espConnections = {}
+
+--// Helper Slider
+local function CreateSlider(parent, text, min, max, default, callback)
+    local Frame = Instance.new("Frame", parent)
+    Frame.Size = UDim2.new(1,-20,0,60)
+    Frame.Position = UDim2.new(0,10,0,#parent:GetChildren()*65)
+    Frame.BackgroundTransparency = 1
+
+    local Label = Instance.new("TextLabel", Frame)
+    Label.Text = text .. ": " .. default
+    Label.TextColor3 = Color3.fromRGB(255,255,255)
+    Label.Font = Enum.Font.SourceSansBold
+    Label.Size = UDim2.new(1,0,0,20)
+    Label.BackgroundTransparency = 1
+
+    local Slider = Instance.new("TextButton", Frame)
+    Slider.Size = UDim2.new(1,0,0,20)
+    Slider.Position = UDim2.new(0,0,0,30)
+    Slider.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    Slider.Text = ""
+    Instance.new("UICorner", Slider)
+
+    local Fill = Instance.new("Frame", Slider)
+    Fill.Size = UDim2.new((default-min)/(max-min),0,1,0)
+    Fill.BackgroundColor3 = Color3.fromRGB(0,170,255)
+    Fill.BorderSizePixel = 0
+
+    local dragging = false
+    Slider.MouseButton1Down:Connect(function() dragging = true end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging=false end
+    end)
+    RunService.RenderStepped:Connect(function()
+        if dragging then
+            local mouseX = UserInputService:GetMouseLocation().X
+            local percent = math.clamp((mouseX-Slider.AbsolutePosition.X)/Slider.AbsoluteSize.X,0,1)
+            Fill.Size = UDim2.new(percent,0,1,0)
+            local val = math.floor(min + (max-min)*percent)
+            Label.Text = text .. ": " .. val
+            callback(val)
         end
     end)
 end
 
-local function stopFly()
-    flying = false
-    if flyBody then
-        pcall(function() flyBody:Destroy() end)
-        flyBody = nil
+--// Sliders in Player Page
+CreateSlider(playerPage,"WalkSpeed",16,200,16,function(val)
+    WalkSpeedValue = val
+    if LocalPlayer.Character then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = val
     end
-end
-
-if flySwitch then
-    flySwitch.OnChanged(function(state)
-        if state then startFly() else stopFly() end
-    end)
-end
-
--- Hop Low Server
-do
-    local row, left, right = createFunctionRow("Main", "Hop Low Server", "Teleport to a lower-pop server")
-    local hopBtn = new("TextButton", {Parent = right, Size = UDim2.new(1,0,0,30), Position = UDim2.new(0,0,0,10), Text = "Hop Low", BackgroundColor3 = ACCENT, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1,1,1)})
-    new("UICorner", {Parent = hopBtn, CornerRadius = UDim.new(0,6)})
-    hopBtn.MouseButton1Click:Connect(function()
-        local success, res = pcall(function()
-            local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
-            local raw = game:HttpGet(url)
-            return HttpService:JSONDecode(raw)
-        end)
-        if success and res and res.data then
-            for _,v in pairs(res.data) do
-                if v.playing < v.maxPlayers then
-                    pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, LocalPlayer) end)
-                    return
-                end
-            end
-        else
-            pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
-        end
-    end)
-end
-
--- VISUAL: ESP
-do
-    local row, left, right = createFunctionRow("Visual", "ESP Players", "Show name, HP and white box for all players")
-    espSwitch = createSwitch(right, false)
-end
-
-local function createESPForPlayer(p)
-    if not p or p == LocalPlayer then return end
-    if espData[p] then return end
-    local char = p.Character; if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart"); local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
-
-    local bb = Instance.new("BillboardGui")
-    bb.Name = "ThoLnoob_ESP"
-    bb.Adornee = hrp
-    bb.AlwaysOnTop = true
-    bb.Size = UDim2.new(0,160,0,56)
-    bb.StudsOffset = Vector3.new(0,2.6,0)
-    bb.Parent = hrp
-
-    local nameLbl = Instance.new("TextLabel", bb)
-    nameLbl.Size = UDim2.new(1,0,0.5,0); nameLbl.Position = UDim2.new(0,0,0,0)
-    nameLbl.BackgroundTransparency = 1; nameLbl.Text = p.Name; nameLbl.Font = Enum.Font.GothamBold; nameLbl.TextSize = 14; nameLbl.TextColor3 = ACCENT2
-
-    local hpLbl = Instance.new("TextLabel", bb)
-    hpLbl.Size = UDim2.new(1,0,0.5,0); hpLbl.Position = UDim2.new(0,0,0.5,0)
-    hpLbl.BackgroundTransparency = 1; hpLbl.Text = "HP: ?"; hpLbl.Font = Enum.Font.Gotham; hpLbl.TextSize = 12; hpLbl.TextColor3 = Color3.new(1,1,1)
-
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = "ThoLnoob_Box"
-    box.Adornee = hrp
-    box.Size = Vector3.new(4,7,2)
-    box.Color3 = Color3.new(1,1,1)
-    box.Transparency = 0.25
-    box.AlwaysOnTop = true
-    box.Parent = hrp
-
-    local conn
-    conn = RunService.Heartbeat:Connect(function()
-        if not p.Parent or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") then
-            if conn then conn:Disconnect(); conn = nil end
-            if bb and bb.Parent then pcall(function() bb:Destroy() end) end
-            if box and box.Parent then pcall(function() box:Destroy() end) end
-            espData[p] = nil
-            return
-        end
-        local h = p.Character:FindFirstChildOfClass("Humanoid")
-        if h then hpLbl.Text = "HP: "..tostring(math.floor(h.Health)) end
-    end)
-
-    espData[p] = {Billboard = bb, Box = box, Conn = conn}
-end
-
-local function removeAllESP()
-    for p,data in pairs(espData) do
-        if data.Conn then pcall(function() data.Conn:Disconnect() end) end
-        if data.Billboard and data.Billboard.Parent then pcall(function() data.Billboard:Destroy() end) end
-        if data.Box and data.Box.Parent then pcall(function() data.Box:Destroy() end) end
-    end
-    espData = {}
-end
-
-if espSwitch then
-    espSwitch.OnChanged(function(state)
-        if state then
-            for _,p in pairs(Players:GetPlayers()) do
-                if p.Character then createESPForPlayer(p) end
-            end
-            Players.PlayerAdded:Connect(function(p)
-                p.CharacterAdded:Connect(function() if espSwitch.Get() then createESPForPlayer(p) end end)
-            end)
-            for _,p in pairs(Players:GetPlayers()) do
-                p.CharacterAdded:Connect(function() if espSwitch.Get() then createESPForPlayer(p) end end)
-            end
-        else
-            removeAllESP()
-        end
-    end)
-end
-
--- PLAYER: Rejoin & Reset
-do
-    local row, left, right = createFunctionRow("Player", "Rejoin", "Teleport to same place")
-    local rejoinBtn = new("TextButton", {Parent = right, Size = UDim2.new(1,0,0,30), Position = UDim2.new(0,0,0,10), Text = "Rejoin", BackgroundColor3 = ACCENT2, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(0,0,0)})
-    new("UICorner", {Parent = rejoinBtn, CornerRadius = UDim.new(0,6)})
-    rejoinBtn.MouseButton1Click:Connect(function() pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end) end)
-
-    local row2, left2, right2 = createFunctionRow("Player", "Reset Character", "Break joints (reset)")
-    local resetBtn = new("TextButton", {Parent = right2, Size = UDim2.new(1,0,0,30), Position = UDim2.new(0,0,0,10), Text = "Reset", BackgroundColor3 = ACCENT2, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(0,0,0)})
-    new("UICorner", {Parent = resetBtn, CornerRadius = UDim.new(0,6)})
-    resetBtn.MouseButton1Click:Connect(function() if LocalPlayer.Character then pcall(function() LocalPlayer.Character:BreakJoints() end) end end)
-end
-
--- TELEPORT: Spawn
-do
-    local row, left, right = createFunctionRow("Teleport", "Teleport Spawn", "Move to SpawnLocation if exists")
-    local spawnBtn = new("TextButton", {Parent = right, Size = UDim2.new(1,0,0,30), Position = UDim2.new(0,0,0,10), Text = "Teleport to Spawn", BackgroundColor3 = ACCENT2, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(0,0,0)})
-    new("UICorner", {Parent = spawnBtn, CornerRadius = UDim.new(0,6)})
-    spawnBtn.MouseButton1Click:Connect(function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and workspace:FindFirstChild("SpawnLocation") then
-            pcall(function() LocalPlayer.Character:MoveTo(workspace.SpawnLocation.Position) end)
-        end
-    end)
-end
-
--- sync values on respawn
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.4)
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        if pmWalk and pmWalk.Set then pmWalk.Set(hum.WalkSpeed) end
-        if pmJump and pmJump.Set then pmJump.Set(hum.JumpPower) end
-        if pmWalk and pmWalk.Get then hum.WalkSpeed = pmWalk.Get() end
-        if pmJump and pmJump.Get then hum.JumpPower = pmJump.Get(); hum.UseJumpPower = true end
-    end
-    stopFly()
 end)
 
--- menu toggle
-local menuVisible = false
-local function toggleMenu()
-    menuVisible = not menuVisible
-    MainFrame.Visible = menuVisible
-    if menuVisible then
-        MainFrame.Position = UDim2.new(0.5,-290,0.2,-210)
-        TweenService:Create(MainFrame, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0.5,-290,0.5,-210)}):Play()
+CreateSlider(playerPage,"JumpPower",50,200,50,function(val)
+    JumpPowerValue = val
+    if LocalPlayer.Character then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = val
+    end
+end)
+
+CreateSlider(playerPage,"FlySpeed",10,200,50,function(val)
+    FlySpeedValue = val
+end)
+
+-- Fly Toggle
+local FlyBtn = Instance.new("TextButton", playerPage)
+FlyBtn.Text = "Toggle Fly (OFF)"
+FlyBtn.Size = UDim2.new(0,200,0,40)
+FlyBtn.Position = UDim2.new(0,10,0,220)
+FlyBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+FlyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+Instance.new("UICorner", FlyBtn)
+
+FlyBtn.MouseButton1Click:Connect(function()
+    flying = not flying
+    FlyBtn.Text = "Toggle Fly ("..(flying and "ON" or "OFF")..")"
+end)
+
+-- Fly logic
+RunService.RenderStepped:Connect(function()
+    if flying and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        local moveDir = Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0,1,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0,1,0) end
+        if moveDir.Magnitude > 0 then
+            hrp.Velocity = moveDir.Unit * FlySpeedValue
+        else
+            hrp.Velocity = Vector3.new(0,0,0)
+        end
+    end
+end)
+
+--// ESP (BillboardGui + BoxHandleAdornment)
+local function AddESP(player)
+    if player == LocalPlayer then return end
+
+    local function createESP(char)
+        task.wait(1)
+        if not char:FindFirstChild("HumanoidRootPart") then return end
+
+        -- Name tag
+        local billboard = Instance.new("BillboardGui", char.HumanoidRootPart)
+        billboard.Size = UDim2.new(0,200,0,50)
+        billboard.AlwaysOnTop = true
+        billboard.StudsOffset = Vector3.new(0,3,0)
+        local nameLabel = Instance.new("TextLabel", billboard)
+        nameLabel.Size = UDim2.new(1,0,1,0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Color3.new(1,1,1)
+        nameLabel.TextStrokeTransparency = 0.5
+        nameLabel.Font = Enum.Font.SourceSansBold
+        nameLabel.TextScaled = true
+
+        -- Box
+        local box = Instance.new("BoxHandleAdornment")
+        box.Size = Vector3.new(4,7,2)
+        box.Color3 = Color3.new(1,1,1)
+        box.Transparency = 0.5
+        box.AlwaysOnTop = true
+        box.ZIndex = 10
+        box.Adornee = char
+        box.Parent = char
+
+        espConnections[player] = {billboard, box}
+    end
+
+    if player.Character then
+        createESP(player.Character)
+    end
+    player.CharacterAdded:Connect(createESP)
+end
+
+local function RemoveESP(player)
+    if espConnections[player] then
+        for _,v in pairs(espConnections[player]) do
+            if v.Destroy then v:Destroy() end
+        end
+        espConnections[player] = nil
     end
 end
 
-ToggleButton.MouseButton1Click:Connect(function() toggleMenu() end)
-UserInputService.InputBegan:Connect(function(input, processed) if not processed and input.KeyCode == Enum.KeyCode.M then toggleMenu() end end)
+Players.PlayerAdded:Connect(AddESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+for _,p in pairs(Players:GetPlayers()) do AddESP(p) end
 
--- basic cleanup function
-local function cleanup()
-    stopFly()
-    removeAllESP()
-    if ScreenGui and ScreenGui.Parent then pcall(function() ScreenGui:Destroy() end) end
-end
+-- ESP Toggle Button
+local ESPBtn = Instance.new("TextButton", espPage)
+ESPBtn.Text = "ESP Player: OFF"
+ESPBtn.Size = UDim2.new(0,200,0,40)
+ESPBtn.Position = UDim2.new(0,10,0,20)
+ESPBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+ESPBtn.TextColor3 = Color3.fromRGB(255,255,255)
+Instance.new("UICorner", ESPBtn)
 
--- auto cleanup when script destroyed (best-effort)
-if script then
-    script.Destroying:Connect(function() cleanup() end)
-end
+ESPBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    ESPBtn.Text = "ESP Player: " .. (espEnabled and "ON" or "OFF")
 
-print("[Tho Lnoob Galaxy Hub] Loaded — Paste into StarterPlayerScripts and press the round button or M to open.")
+    for _,data in pairs(espConnections) do
+        for _,v in pairs(data) do
+            if v:IsA("BillboardGui") or v:IsA("BoxHandleAdornment") then
+                v.Enabled = espEnabled
+            end
+        end
+    end
+end)
