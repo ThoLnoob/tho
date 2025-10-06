@@ -1,4 +1,4 @@
---// Banana Galaxy Hub (Full Fixed + Fly + ESP + Galaxy UI)
+--// Banana Galaxy Hub (Fixed Fly + ESP + Galaxy UI)
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
@@ -143,6 +143,8 @@ createSlider(Pages.Main,"Fly Speed",10,100,50,function(val)
     flySpeed = val
 end)
 
+-- FLY (đã fix - bay thật sự)
+local UIS = game:GetService("UserInputService")
 local flyBtn = Instance.new("TextButton", Pages.Main)
 flyBtn.Size = UDim2.new(1,-20,0,40)
 flyBtn.Position = UDim2.new(0,10,0,140)
@@ -150,28 +152,46 @@ flyBtn.Text = "Toggle Fly"
 flyBtn.TextColor3 = Color3.fromRGB(255,255,255)
 flyBtn.Font = Enum.Font.GothamBold
 flyBtn.BackgroundColor3 = Color3.fromRGB(40,40,80)
+
 flyBtn.MouseButton1Click:Connect(function()
     flying = not flying
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not (char and root) then return end
+
     if flying then
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not (hum and root) then return end
-        local bp = Instance.new("BodyPosition", root)
-        bp.MaxForce = Vector3.new(9e9,9e9,9e9)
         local bg = Instance.new("BodyGyro", root)
-        bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
-        spawn(function()
+        local bv = Instance.new("BodyVelocity", root)
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.zero
+
+        task.spawn(function()
             while flying and task.wait() do
                 bg.CFrame = workspace.CurrentCamera.CFrame
-                local move = Vector3.zero
-                if hum.MoveDirection.Magnitude > 0 then
-                    move = workspace.CurrentCamera.CFrame.LookVector * flySpeed
+                local moveDir = Vector3.zero
+                if UIS:IsKeyDown(Enum.KeyCode.W) then
+                    moveDir = moveDir + workspace.CurrentCamera.CFrame.LookVector
                 end
-                bp.Position = root.Position + move
+                if UIS:IsKeyDown(Enum.KeyCode.S) then
+                    moveDir = moveDir - workspace.CurrentCamera.CFrame.LookVector
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then
+                    moveDir = moveDir - workspace.CurrentCamera.CFrame.RightVector
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then
+                    moveDir = moveDir + workspace.CurrentCamera.CFrame.RightVector
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.Space) then
+                    moveDir = moveDir + Vector3.new(0,1,0)
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+                    moveDir = moveDir - Vector3.new(0,1,0)
+                end
+                bv.Velocity = moveDir * flySpeed
             end
-            bp:Destroy()
             bg:Destroy()
+            bv:Destroy()
         end)
     end
 end)
@@ -237,7 +257,7 @@ espBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== PLAYER TAB ==========
+-- PLAYER TAB
 local function createButton(parent,text,callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = UDim2.new(1,-20,0,40)
@@ -270,7 +290,7 @@ createButton(Pages.Player,"Hop Low Server",function()
     end
 end)
 
--- ========== TELEPORT TAB ==========
+-- TELEPORT TAB
 createButton(Pages.Teleport,"Teleport to Spawn",function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and workspace:FindFirstChild("SpawnLocation") then
         LocalPlayer.Character:MoveTo(workspace.SpawnLocation.Position)
